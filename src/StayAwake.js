@@ -73,26 +73,11 @@ ObjC.registerSubclass({
   },
 })
 
-function resourcePath(name) {
-  try {
-    return $.NSBundle.mainBundle.resourcePath.js + '/' + name
-  } catch (e) {
-    return name
-  }
-}
-
 function setButtonIcon() {
+  if (!statusItem) return
   var button = statusItem.button
-  var name = isOn ? 'MenuIconFilled.png' : 'MenuIcon.png'
-  var img = $.NSImage.alloc.initWithContentsOfFile(resourcePath(name))
-  if (img) {
-    img.setSize($.NSMakeSize(18, 18))
-    img.setTemplate(true)
-    button.image = img
-    button.title = ''
-  } else {
-    button.title = isOn ? '\u25cf' : '\u25cb'
-  }
+  try { button.image = null } catch (e) {}
+  button.title = isOn ? '\u25cf' : '\u25cb'
   button.toolTip = isOn ? 'Stay Awake is on' : 'Stay Awake is off'
 }
 
@@ -130,7 +115,6 @@ function rebuildMenu() {
   menu.addItem(makeItem(isOn ? 'Turn Off' : 'Turn On', 'toggle:', 0, false))
   if (isOn) menu.addItem(makeLabel(elapsedLabel()))
   menu.addItem($.NSMenuItem.separatorItem)
-
   menu.addItem(makeLabel('Keep Mac awake'))
   menu.addItem(makeItem('Until I turn it off', 'setDuration:', 0, durationMin === 0))
   menu.addItem(makeItem('30 minutes', 'setDuration:', 30, durationMin === 30))
@@ -138,14 +122,12 @@ function rebuildMenu() {
   menu.addItem(makeItem('3 hours', 'setDuration:', 180, durationMin === 180))
   menu.addItem(makeItem('8 hours', 'setDuration:', 480, durationMin === 480))
   menu.addItem($.NSMenuItem.separatorItem)
-
   menu.addItem(makeLabel('Move cursor'))
   menu.addItem(makeItem('Off', 'setJiggle:', 0, jiggleMin === 0))
   menu.addItem(makeItem('Every 5 minutes', 'setJiggle:', 5, jiggleMin === 5))
   menu.addItem(makeItem('Every 10 minutes', 'setJiggle:', 10, jiggleMin === 10))
   menu.addItem(makeItem('Every 15 minutes', 'setJiggle:', 15, jiggleMin === 15))
   menu.addItem($.NSMenuItem.separatorItem)
-
   menu.addItem(makeItem(startAtLogin ? 'Start at login \u2713' : 'Start at login', 'toggleLogin:', 0, startAtLogin))
   menu.addItem($.NSMenuItem.separatorItem)
   menu.addItem(makeItem('Quit Stay Awake', 'quit:', 0, false))
@@ -164,9 +146,7 @@ function startCaffeinate() {
 
 function stopCaffeinate() {
   if (caffeinateTask) {
-    try {
-      caffeinateTask.terminate
-    } catch (e) {}
+    try { caffeinateTask.terminate } catch (e) {}
     caffeinateTask = null
   }
 }
@@ -208,15 +188,9 @@ function jiggleCursor() {
 }
 
 function onTick() {
-  if (!isOn) {
-    rebuildMenu()
-    return
-  }
+  if (!isOn) { rebuildMenu(); return }
   if (durationMin > 0 && startedAt) {
-    if (Date.now() - startedAt >= durationMin * 60000) {
-      setOn(false)
-      return
-    }
+    if (Date.now() - startedAt >= durationMin * 60000) { setOn(false); return }
   }
   if (jiggleMin > 0 && Date.now() - lastJiggle >= jiggleMin * 60000) {
     jiggleCursor()
@@ -226,17 +200,12 @@ function onTick() {
 }
 
 function bundlePath() {
-  try {
-    return $.NSBundle.mainBundle.bundlePath.js
-  } catch (e) {
-    return homeApplicationsPath()
+  try { return $.NSBundle.mainBundle.bundlePath.js }
+  catch (e) {
+    var home = $.NSProcessInfo.processInfo.environment.objectForKey('HOME')
+    if (home) return home.js + '/Applications/Stay Awake.app'
+    return '/Applications/Stay Awake.app'
   }
-}
-
-function homeApplicationsPath() {
-  var home = $.NSProcessInfo.processInfo.environment.objectForKey('HOME')
-  if (home) return home.js + '/Applications/Stay Awake.app'
-  return '/Applications/Stay Awake.app'
 }
 
 function toggleLogin() {
@@ -259,42 +228,23 @@ function isApplet() {
   try {
     var path = $.NSBundle.mainBundle.bundlePath.js || ''
     return path.indexOf('.app') !== -1
-  } catch (e) {
-    return false
-  }
+  } catch (e) { return false }
 }
 
 function startStayAwake() {
   if (didStart) return
   didStart = true
-
   delegate = $.StayAwakeDelegate.alloc.init
   var nsapp = $.NSApplication.sharedApplication
   nsapp.setActivationPolicy($.NSApplicationActivationPolicyAccessory)
-
   statusItem = $.NSStatusBar.systemStatusBar.statusItemWithLength($.NSVariableStatusItemLength)
-  statusItem.button.imagePosition = $.NSImageOnly
   setButtonIcon()
   rebuildMenu()
-
-  ticker = $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(
-    15,
-    delegate,
-    'tick:',
-    null,
-    true
-  )
+  ticker = $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(15, delegate, 'tick:', null, true)
   $.NSRunLoop.mainRunLoop.addTimerForMode(ticker, $.NSRunLoopCommonModes)
-
   if (defaults.boolForKey('isOn')) setOn(true)
-
-  if (!isApplet()) {
-    nsapp.run()
-  }
+  if (!isApplet()) nsapp.run()
 }
 
-function run() {
-  startStayAwake()
-}
-
+function run() { startStayAwake() }
 startStayAwake()

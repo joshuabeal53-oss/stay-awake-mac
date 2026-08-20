@@ -21,15 +21,23 @@ if (defaults.boolForKey('stayAwakeInit')) {
   startAtLogin = defaults.boolForKey('startAtLogin')
 }
 
+function log(msg) {
+  try {
+    var line = new Date().toISOString() + ' ' + msg + '\n'
+    var path = $.NSHomeDirectory().js + '/Library/Logs/StayAwake.log'
+    var existing = $.NSString.stringWithContentsOfFileEncodingError(path, $.NSUTF8StringEncoding, null)
+    var body = (existing && !existing.isNil && existing.isNil()) ? line : (existing.js || '') + line
+    $.NSString.stringWithString(body).writeToFileAtomicallyEncodingError(path, true, $.NSUTF8StringEncoding, null)
+  } catch (e) {}
+}
+
 ObjC.registerSubclass({
   name: 'StayAwakeDelegate',
   superclass: 'NSObject',
   methods: {
     'toggle:': {
       types: ['void', ['id']],
-      implementation: function () {
-        setOn(!isOn)
-      },
+      implementation: function () { setOn(!isOn) },
     },
     'setDuration:': {
       types: ['void', ['id']],
@@ -52,15 +60,11 @@ ObjC.registerSubclass({
     },
     'toggleLogin:': {
       types: ['void', ['id']],
-      implementation: function () {
-        toggleLogin()
-      },
+      implementation: function () { toggleLogin() },
     },
     'tick:': {
       types: ['void', ['id']],
-      implementation: function () {
-        onTick()
-      },
+      implementation: function () { onTick() },
     },
     'quit:': {
       types: ['void', ['id']],
@@ -77,8 +81,8 @@ function setButtonIcon() {
   if (!statusItem) return
   var button = statusItem.button
   try { button.image = null } catch (e) {}
-  button.title = isOn ? '\u25cf' : '\u25cb'
-  button.toolTip = isOn ? 'Stay Awake is on' : 'Stay Awake is off'
+  button.title = isOn ? 'Awake' : 'Awake'
+  button.toolTip = isOn ? 'Stay Awake is on — click to turn off' : 'Stay Awake is off — click to turn on'
 }
 
 function makeItem(title, selector, tag, checked) {
@@ -128,7 +132,7 @@ function rebuildMenu() {
   menu.addItem(makeItem('Every 10 minutes', 'setJiggle:', 10, jiggleMin === 10))
   menu.addItem(makeItem('Every 15 minutes', 'setJiggle:', 15, jiggleMin === 15))
   menu.addItem($.NSMenuItem.separatorItem)
-  menu.addItem(makeItem(startAtLogin ? 'Start at login \u2713' : 'Start at login', 'toggleLogin:', 0, startAtLogin))
+  menu.addItem(makeItem(startAtLogin ? 'Start at login ✓' : 'Start at login', 'toggleLogin:', 0, startAtLogin))
   menu.addItem($.NSMenuItem.separatorItem)
   menu.addItem(makeItem('Quit Stay Awake', 'quit:', 0, false))
   statusItem.menu = menu
@@ -138,8 +142,7 @@ function startCaffeinate() {
   stopCaffeinate()
   var task = $.NSTask.alloc.init
   task.launchPath = '/usr/bin/caffeinate'
-  var pid = $.NSProcessInfo.processInfo.processIdentifier
-  task.arguments = ['-diu', '-w', String(pid)]
+  task.arguments = ['-diu', '-w', String($.NSProcessInfo.processInfo.processIdentifier)]
   task.launch
   caffeinateTask = task
 }
@@ -188,9 +191,15 @@ function jiggleCursor() {
 }
 
 function onTick() {
-  if (!isOn) { rebuildMenu(); return }
+  if (!isOn) {
+    rebuildMenu()
+    return
+  }
   if (durationMin > 0 && startedAt) {
-    if (Date.now() - startedAt >= durationMin * 60000) { setOn(false); return }
+    if (Date.now() - startedAt >= durationMin * 60000) {
+      setOn(false)
+      return
+    }
   }
   if (jiggleMin > 0 && Date.now() - lastJiggle >= jiggleMin * 60000) {
     jiggleCursor()
@@ -200,51 +209,40 @@ function onTick() {
 }
 
 function bundlePath() {
-  try { return $.NSBundle.mainBundle.bundlePath.js }
-  catch (e) {
-    var home = $.NSProcessInfo.processInfo.environment.objectForKey('HOME')
-    if (home) return home.js + '/Applications/Stay Awake.app'
-    return '/Applications/Stay Awake.app'
-  }
+  var home = $.NSProcessInfo.processInfo.environment.objectForKey('HOME')
+  if (home) return home.js + '/Library/Application Support/StayAwake/StayAwake.js'
+  return ''
 }
 
 function toggleLogin() {
   var next = !startAtLogin
-  var path = bundlePath().replace(/"/g, '\\"')
-  var script = next
-    ? 'tell application "System Events" to make login item at end with properties {path:"' + path + '", hidden:true, name:"Stay Awake"}'
-    : 'tell application "System Events" to delete (every login item whose name is "Stay Awake")'
-  var proc = $.NSTask.alloc.init
-  proc.launchPath = '/usr/bin/osascript'
-  proc.arguments = ['-e', script]
-  proc.launch
   startAtLogin = next
   defaults.setBoolForKey(startAtLogin, 'startAtLogin')
   defaults.setBoolForKey(true, 'stayAwakeInit')
   rebuildMenu()
 }
 
-function isApplet() {
-  try {
-    var path = $.NSBundle.mainBundle.bundlePath.js || ''
-    return path.indexOf('.app') !== -1
-  } catch (e) { return false }
-}
-
 function startStayAwake() {
   if (didStart) return
   didStart = true
+  log('starting')
   delegate = $.StayAwakeDelegate.alloc.init
   var nsapp = $.NSApplication.sharedApplication
   nsapp.setActivationPolicy($.NSApplicationActivationPolicyAccessory)
-  statusItem = $.NSStatusBar.systemStatusBar.statusItemWithLength($.NSVariableStatusItemLength)
+  statusItem = $.NSStatusBar.systemStatusBar.statusItemWithLength(-1)
   setButtonIcon()
   rebuildMenu()
-  ticker = $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(15, delegate, 'tick:', null, true)
+  ticker = $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(
+    15, delegate, 'tick:', null, true
+  )
   $.NSRunLoop.mainRunLoop.addTimerForMode(ticker, $.NSRunLoopCommonModes)
   if (defaults.boolForKey('isOn')) setOn(true)
-  if (!isApplet()) nsapp.run()
+  log('menu bar item created')
+  nsapp.run()
 }
 
-function run() { startStayAwake() }
+function run() {
+  startStayAwake()
+}
+
 startStayAwake()

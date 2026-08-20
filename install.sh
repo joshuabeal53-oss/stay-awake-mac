@@ -2,7 +2,7 @@
 # Stay Awake — installs into ~/Applications. No admin password. No /Applications.
 set -euo pipefail
 
-REPO_RAW="https://raw.githubusercontent.com/joshuabeal53-oss/stay-awake-mac/main"
+REPO_RAW="https://raw.githubusercontent.com/joshuabeal53-oss/stay-awake-mac/d2901ba4805d065065c4a906ae329dc3c77eb908"
 DEST_DIR="$HOME/Applications"
 APP="$DEST_DIR/Stay Awake.app"
 if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
@@ -33,8 +33,6 @@ if [ ! -f "$JS" ]; then
   JS="$TMP/StayAwake.js"
 fi
 
-# Compile a real stay-open applet (Apple's stub, not a bash script).
-# That avoids "you don't have permission to open this application."
 /usr/bin/osacompile -x -l JavaScript -o "$APP" "$JS"
 
 INFO="$APP/Contents/Info.plist"
@@ -51,14 +49,13 @@ if [ -f "$INFO" ]; then
     || true
 fi
 
-# You own this folder — no sudo, no /Applications ACL.
 chmod -R u+rwX "$APP" 2>/dev/null || true
 chmod +x "$APP/Contents/MacOS/"* 2>/dev/null || true
 /usr/bin/xattr -cr "$APP" 2>/dev/null || true
 
 open "$APP"
 
-/usr/bin/osascript -e 'display notification "Click the cup (or ●) next to the clock, then Turn On." with title "Stay Awake is in your menu bar"' >/dev/null 2>&1 || true
+/usr/bin/osascript -e 'display notification "Click the ● next to the clock, then Turn On." with title "Stay Awake is in your menu bar"' >/dev/null 2>&1 || true
 
 echo "Installed: $APP"
-echo "Look at the top-right of the menu bar."
+echo "Look at the top-right of the menu bar for a ● or ○."

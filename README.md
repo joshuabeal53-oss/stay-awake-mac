@@ -1,28 +1,27 @@
 # Stay Awake for Mac
 
-A tiny menu bar app that keeps your Mac from going to sleep.
+Menu bar app that keeps your Mac from sleeping. Installs into **~/Applications** (your home folder) so macOS never asks for an admin password.
 
-## Download
+## Install (this is the one that works)
 
-**[Download Stay-Awake-for-Mac.zip](https://github.com/joshuabeal53-oss/stay-awake-mac/archive/refs/heads/main.zip)**
+Open **Terminal** and paste:
 
-## Install
+```bash
+curl -fsSL https://raw.githubusercontent.com/joshuabeal53-oss/stay-awake-mac/main/install.sh | bash
+```
 
-1. Unzip the download
-2. Double-click **Install Stay Awake.command**
-3. If macOS warns the file is from the internet: right-click → **Open**, or System Settings → Privacy & Security → **Open Anyway**
-4. Look at the top-right of your screen — a coffee cup appears next to Wi-Fi and the clock
-5. Click the cup → **Turn On**
+Then look at the **top-right of the menu bar** (next to Wi-Fi). Click the cup or the ● / ○ dot → **Turn On**.
+
+That command compiles a real Mac applet with Apple’s own `osacompile`. No Gatekeeper dance, no `/Applications` privileges.
+
+## If you already have a broken copy
+
+Quit it if it’s running, delete `/Applications/Stay Awake.app` and `~/Applications/Stay Awake.app` if they exist, then run the curl command above.
 
 ## What it does
 
-- Uses macOS’s official keep-awake (same system call as Amphetamine / Caffeine)
-- Optionally nudges the cursor 1 pixel every 5 / 10 / 15 minutes (default: 10)
-- Timed sessions: 30 minutes, 1 hour, 3 hours, 8 hours, or until you turn it off
-- Optional start at login
-
-Closing the lid still sleeps the Mac. That’s on purpose.
+Uses `/usr/bin/caffeinate` (same idea as Amphetamine / Caffeine). Optional cursor nudge every 10 minutes. Closing the lid still sleeps the Mac.
 
 ## Uninstall
 
-Quit Stay Awake from its menu, then drag Stay Awake.app from Applications (or `~/Applications`) to the Trash. Turn off **Start at login** first if you enabled it.
+Menu bar icon → Quit Stay Awake, then delete `~/Applications/Stay Awake.app`.

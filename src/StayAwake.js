@@ -12,6 +12,7 @@ var caffeinateTask = null
 var statusItem = null
 var delegate = null
 var ticker = null
+var didStart = false
 
 var defaults = $.NSUserDefaults.standardUserDefaults
 if (defaults.boolForKey('stayAwakeInit')) {
@@ -228,8 +229,14 @@ function bundlePath() {
   try {
     return $.NSBundle.mainBundle.bundlePath.js
   } catch (e) {
-    return '/Applications/Stay Awake.app'
+    return homeApplicationsPath()
   }
+}
+
+function homeApplicationsPath() {
+  var home = $.NSProcessInfo.processInfo.environment.objectForKey('HOME')
+  if (home) return home.js + '/Applications/Stay Awake.app'
+  return '/Applications/Stay Awake.app'
 }
 
 function toggleLogin() {
@@ -248,24 +255,46 @@ function toggleLogin() {
   rebuildMenu()
 }
 
-delegate = $.StayAwakeDelegate.alloc.init
-var nsapp = $.NSApplication.sharedApplication
-nsapp.setActivationPolicy($.NSApplicationActivationPolicyAccessory)
+function isApplet() {
+  try {
+    var path = $.NSBundle.mainBundle.bundlePath.js || ''
+    return path.indexOf('.app') !== -1
+  } catch (e) {
+    return false
+  }
+}
 
-statusItem = $.NSStatusBar.systemStatusBar.statusItemWithLength($.NSVariableStatusItemLength)
-statusItem.button.imagePosition = $.NSImageOnly
-setButtonIcon()
-rebuildMenu()
+function startStayAwake() {
+  if (didStart) return
+  didStart = true
 
-ticker = $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(
-  15,
-  delegate,
-  'tick:',
-  null,
-  true
-)
-$.NSRunLoop.mainRunLoop.addTimerForMode(ticker, $.NSRunLoopCommonModes)
+  delegate = $.StayAwakeDelegate.alloc.init
+  var nsapp = $.NSApplication.sharedApplication
+  nsapp.setActivationPolicy($.NSApplicationActivationPolicyAccessory)
 
-if (defaults.boolForKey('isOn')) setOn(true)
+  statusItem = $.NSStatusBar.systemStatusBar.statusItemWithLength($.NSVariableStatusItemLength)
+  statusItem.button.imagePosition = $.NSImageOnly
+  setButtonIcon()
+  rebuildMenu()
 
-nsapp.run()
+  ticker = $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(
+    15,
+    delegate,
+    'tick:',
+    null,
+    true
+  )
+  $.NSRunLoop.mainRunLoop.addTimerForMode(ticker, $.NSRunLoopCommonModes)
+
+  if (defaults.boolForKey('isOn')) setOn(true)
+
+  if (!isApplet()) {
+    nsapp.run()
+  }
+}
+
+function run() {
+  startStayAwake()
+}
+
+startStayAwake()

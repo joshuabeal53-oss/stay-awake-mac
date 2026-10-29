@@ -120,8 +120,8 @@ final class AwakeEngine: ObservableObject {
 
     private func start() {
         stopAssertions()
-        createAssertion(kIOPMAssertionTypePreventUserIdleDisplaySleep, id: &displayAssertion)
-        createAssertion(kIOPMAssertionTypePreventUserIdleSystemSleep, id: &systemAssertion)
+        createAssertion(kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString, id: &displayAssertion)
+        createAssertion(kIOPMAssertionTypePreventUserIdleSystemSleep as CFString, id: &systemAssertion)
         isOn = true
         startedAt = Date()
         lastJiggle = Date()
